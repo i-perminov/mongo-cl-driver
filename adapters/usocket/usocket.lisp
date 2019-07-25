@@ -21,7 +21,8 @@
         (usocket:socket-connect (mongo-cl-driver:server-hostname client)
                                 (mongo-cl-driver:server-port client)
                                 :protocol :stream
-                                :element-type 'ub8)))
+                                :element-type 'ub8
+                                :nodelay t)))
 
 (defmethod mongo-cl-driver:create-mongo-client ((adapter (eql :usocket)) &key write-concern server)
   (make-instance 'mongo-client :write-concern write-concern :server server))
