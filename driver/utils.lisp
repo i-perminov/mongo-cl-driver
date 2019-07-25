@@ -19,6 +19,8 @@
     ((blackbird-base::promise-forward-to promise)
      (try-unpromisify (blackbird-base::promise-forward-to promise)))
     #|------------------------------------------------------------------------|#
+    ((blackbird-base::promise-errored promise)
+     (error (blackbird-base::promise-error promise)))
     (t
      promise)))
   
