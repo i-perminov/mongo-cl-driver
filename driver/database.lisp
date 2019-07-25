@@ -46,7 +46,7 @@
 
 ;;;; auth
 
-(defun authenticate (database username password)
+(defun authenticate-mongo-cr (database username password)
   (labels ((md5 (text)
              (ironclad:byte-array-to-hex-string
               (ironclad:digest-sequence
@@ -64,6 +64,63 @@
                        "user" username
                        "nonce" (gethash "nonce" nonce-reply)
                        "key" (nonce-key (gethash "nonce" nonce-reply) username password)))))))
+
+(defun password-digest (username password)
+  (ironclad:byte-array-to-hex-string (ironclad:digest-sequence :md5 (ironclad:ascii-string-to-byte-array (concatenate 'string username ":mongo:" password)))))
+
+(defun authenticate-scram (database username password)
+  (declare (optimize debug))
+  (labels ((payload (s)
+             (make-instance 'mongo-cl-driver.bson:binary-data
+                            :octets (ironclad:ascii-string-to-byte-array s)))
+           (run (&rest args)
+             (run-command database (apply #'$ args)))
+           (get-payload (doc)
+             (babel:octets-to-string (mongo-cl-driver.bson:binary-data-octets (gethash "payload" doc))))
+           (challenge (payload prev-response)
+             (run "saslContinue" 1
+                  "conversationId" (gethash "conversationId" prev-response)
+                  "payload" (payload payload))))
+    (let* ((nonce (cl-scram:gen-client-nonce))
+           (initial-message (cl-scram:gen-client-initial-message :username username :nonce nonce))
+           (initial-response-doc (run "saslStart" 1
+                                      "mechanism" "SCRAM-SHA-1"
+                                      "payload" (payload initial-message)
+                                      "autoAuthorize" 1))
+           (initial-response (get-payload initial-response-doc)))
+      ;; (format t "nonce: ~a~%" nonce)
+      ;; (format t "initial-message: ~a~%" initial-message)
+      ;; (format t "initial-response-doc: ~a~%" (hash-table-alist initial-response-doc))
+      ;; (format t "initial-response: ~a~%" initial-response)
+      (unless (>= (cl-scram:parse-server-iterations :response initial-response) 4096)
+        (error "Server returned an invalid iteration count"))
+      (let* ((final-message (cl-scram:gen-client-final-message
+                             :password (password-digest username password)
+                             :client-nonce nonce
+                             :client-initial-message initial-message
+                             :server-response initial-response))
+             (final-response-doc (challenge (cdr (assoc 'cl-scram::final-message final-message))
+                                            initial-response-doc))
+             (final-response (get-payload final-response-doc))
+             ;; From Python driver: Depending on how it's configured, Cyrus SASL (which the server uses)
+             ;; requires a third empty challenge.
+             (complete (or (gethash "done" final-response-doc)
+                           (gethash "done" (challenge "" final-response-doc)))))
+        ;; (format t "final-message: ~a~%" final-message)
+        ;; (format t "final-response-doc: ~a~%" (hash-table-alist final-response-doc))
+        (unless complete
+          (error "SASL conversation failed to complete"))
+        (unless (and (string= "v=" final-response :end2 2)
+                     (string= (cdr (assoc 'cl-scram::server-signature final-message))
+                              final-response :start2 2))
+          (error "Invalid server signature"))))))
+
+(defun authenticate (database username password)
+  (let ((max-wire-version (gethash "maxWireVersion"
+                                   (mongo-cl-driver:run-command database "ismaster"))))
+    (if (>= max-wire-version 3)
+        (authenticate-scram database username password)
+        (authenticate-mongo-cr database username password))))
 
 (defun logout (database)
   (run-command database "logout"))

@@ -8,7 +8,7 @@
 (defsystem #:mongo-cl-driver
     :depends-on (#:iterate #:closer-mop #:local-time
                  #:babel #:ieee-floats #:ironclad
-                 #:bordeaux-threads
+                 #:bordeaux-threads #:cl-scram
                  #:blackbird)
     :serial t
     :components
