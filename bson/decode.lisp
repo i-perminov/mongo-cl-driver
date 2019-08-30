@@ -58,10 +58,11 @@
 (defun decode-double (source)
   "Decode 64-bit IEEE 754 floating point from SOURCE"
   (let ((n (decode-uint64 source)))
-    (case n
-      (#x7FF0000000000000 sb-ext:double-float-positive-infinity)
-      (#xFFF0000000000000 sb-ext:double-float-negative-infinity)
-      (t (ieee-floats:decode-float64 n)))))
+    #+sbcl(case n
+            (#x7FF0000000000000 sb-ext:double-float-positive-infinity)
+            (#xFFF0000000000000 sb-ext:double-float-negative-infinity)
+            (t (ieee-floats:decode-float64 n)))
+    #-sbcl(ieee-floats:decode-float64 n)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Non-terminals

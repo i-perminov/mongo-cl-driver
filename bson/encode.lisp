@@ -49,7 +49,10 @@
 
 (defun encode-double (double target)
   "Encode 64-bit IEEE 754 floating point to TARGE"
-  (encode-int64 (ieee-floats:encode-float64 double)
+  (encode-int64 #+sbcl(if (sb-ext:float-infinity-p double)
+                          (if (plusp double) #x7FF0000000000000 #xFFF0000000000000)
+                          (ieee-floats:encode-float64 double))
+                #-sbcl(ieee-floats:encode-float64 double)
                 target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
