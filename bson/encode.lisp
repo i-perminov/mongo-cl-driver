@@ -201,6 +201,14 @@
   (encode-ename key target)
   (encode-document value target))
 
+(defstruct (document-alist)
+  elements)
+
+(defmethod encode-element (key (value document-alist) target)
+  (encode-byte #x03 target)
+  (encode-ename key target)
+  (encode-document (document-alist-elements value) target))
+
 (defmethod encode-element (key (value object-id) target)
   (encode-byte #x07 target)
   (encode-ename key target)
@@ -233,13 +241,16 @@
 
 (defun encode-document (document target)
   "Encode DOCUMENT as BSON to target"
-  (check-type document hash-table)
+  (check-type document (or hash-table list))
   (let* ((index *encoded-bytes-count*)
          (count (prog1 (with-count-encoded-bytes
                          (dotimes (i 4)
                            (encode-byte 0 target))
-                         (iter (for (key value) in-hashtable document)
-                               (encode-element key value target))
+                         (if (typep document 'hash-table)
+                             (iter (for (key value) in-hashtable document)
+                                   (encode-element key value target))
+                             (iter (for (key . value) in document)
+                                   (encode-element key value target)))
                          (encode-byte #x00 target))))
          (arr (make-array 4 :element-type '(unsigned-byte 8) :fill-pointer 0))
          (*encoded-bytes-count* 0))

@@ -30,7 +30,8 @@
            #:javascript-scope
            #:mongo-timestamp
            #:mongo-timestamp-value
-
+           #:make-document-alist
+           
            #:encode-byte
            #:decode-byte
            #:encode-int32

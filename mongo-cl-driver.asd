@@ -39,6 +39,7 @@
                            (:file "collection")
                            (:file "cursor")
                            (:file "constants")
+                           (:file "indexes")
                            ))))
 
 (defsystem #:mongo-cl-driver-test
