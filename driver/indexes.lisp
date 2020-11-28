@@ -34,7 +34,7 @@
               keys
               (mongo-cl-driver.bson:make-document-alist :elements keys)))
     (setf (gethash "name" index) (gethash "name" index (make-name keys)))
-    (let ((cmd ($ "createIndexes" (fullname collection)
+    (let ((cmd ($ "createIndexes" (collection-name collection)
                   "indexes" (list index))))
       (try-unpromisify
        (alet ((reply (run-command (collection-database collection) cmd)))
@@ -47,7 +47,7 @@
 
 (defun drop-indexes (collection &optional (name "*"))
   (setf (collection-indexes collection) nil)
-  (let ((cmd ($ "dropIndexes" (fullname collection)
+  (let ((cmd ($ "dropIndexes" (collection-name collection)
                 "index" name)))
     (try-unpromisify
      (alet ((reply (run-command (collection-database collection) cmd)))
@@ -67,7 +67,7 @@
                       "name" name)))
 
 (defun indexes (collection)
-  (let ((cmd ($ "listIndexes" (fullname collection))))
+  (let ((cmd ($ "listIndexes" (collection-name collection))))
     (try-unpromisify
      (alet ((reply (run-command (collection-database collection) cmd)))
        reply))))
