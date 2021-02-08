@@ -74,7 +74,10 @@
              (make-instance 'mongo-cl-driver.bson:binary-data
                             :octets (ironclad:ascii-string-to-byte-array s)))
            (run (&rest args)
-             (run-command database (apply #'$ args)))
+               (let ((doc (run-command database (apply #'$ args))))
+                 (when (= (truncate (gethash "ok" doc)) 0)
+                   (error (gethash "errmsg" doc)))
+                 doc))
            (get-payload (doc)
              (babel:octets-to-string (mongo-cl-driver.bson:binary-data-octets (gethash "payload" doc))))
            (challenge (payload prev-response)
